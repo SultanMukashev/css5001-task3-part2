@@ -1,0 +1,26 @@
+{
+  "source": {
+    "type": "dated_files",
+    "path": "capstone_minietl/data/incoming/orders",
+    "pattern": "orders_(?P<date>\\d{4}-\\d{2}-\\d{2})\\.csv",
+    "format": "csv"
+  },
+  "transforms": [
+    {"type": "require", "columns": ["order_id", "customer_email", "amount", "order_date"]},
+    {"type": "cast", "schema": "orders"},
+    {"type": "normalise_ts", "column": "order_date", "source_tz": "Asia/Almaty", "dayfirst": true},
+    {"type": "dedupe", "key": "order_id"}
+  ],
+  "checks": [
+    {"type": "not_null", "column": "customer_email"},
+    {"type": "unique", "column": "order_id"},
+    {"type": "in_range", "column": "amount", "low": 0, "high": 100000, "severity": "warning"},
+    {"type": "matches_pattern", "column": "currency", "regex": "[A-Z]{3}", "severity": "warning"},
+    {"type": "freshness", "column": "order_date", "max_age_hours": 72, "severity": "warning"}
+  ],
+  "sink": {"type": "partitioned_jsonl", "path": "capstone_minietl/out/orders", "ts_column": "order_date"},
+  "retry": {"max_attempts": 3, "base": 0.5},
+  "state": "capstone_minietl/out/state/orders.json",
+  "quarantine": "capstone_minietl/out/quarantine/orders",
+  "reports": "capstone_minietl/out/reports/orders"
+}
